@@ -28,14 +28,14 @@ The `goldmine-connect` command requires several arguments to function properly. 
 
 ### Required Arguments
 
-- `-host` – The GoldMine server’s host address to connect to.
-- `-port` – The GoldMine server’s rlogin port number.
+- `-host` – Gold Mine server’s host address to connect to.
+- `-port` – GoldM ine server’s rlogin port number.
 - `-name` – Your username for connecting to the server.
 - `-tag` – The BBS tag (without brackets).
 
 ### Optional Arguments
 
-- `-xtrn` – The optional Gold Mine xtrn code (leave empty if not needed).
+- `-xtrn` – The optional Gold Mine xtrn code (leave empty if not needed or for the main menu).
 - `-timeout` – Timeout for receiving bytes after EOF occurs (default: `1s`). Accepts durations such as `500ms`, `2s`, etc.
 
 ### Example Usage
