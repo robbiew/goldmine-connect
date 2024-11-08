@@ -30,7 +30,8 @@ _testmain.go
 
 # Binary
 #
-go-telnet
+bin/
 
 # Local temporary directory
+#
 tmp/
