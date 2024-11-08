@@ -114,9 +114,9 @@ func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, op
 	}()
 
 	// Send initial rlogin handshake using the parameters from CommandLine
-	localUsername := "local_username" // Placeholder: replace with actual local username if needed
-	remoteUsername := options.Name()  // Use the name from CommandLine struct
-	tag := options.Tag()              // BBS tag from CommandLine struct
+	localUsername := ""              // Placeholder: replace with actual local username if needed
+	remoteUsername := options.Name() // Use the name from CommandLine struct
+	tag := options.Tag()             // BBS tag from CommandLine struct
 
 	// Conditionally include xtrn if it's provided
 	handshake := fmt.Sprintf("\x00%s\x00[%s]%s\x00", localUsername, tag, remoteUsername)
