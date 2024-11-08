@@ -1,26 +1,86 @@
 # goldmine-connect
 
-This is a telnet/rlogin program that connects to a Synchronet-based game server, called Gold Mine. Goldmine allows passwordless RLOGIN so pre-approved BBS sysops can pass theiir users through to Gold Mine. It is used primarily by the "Door of Doors" BBS program (also by robbiew/aLPHA).
+`goldmine-connect` is a command-line tool designed to connect to a GoldMine server using the rlogin protocol. This tool allows you to specify a host, port, username, and BBS tag, along with optional parameters for connection customization.
 
-What does it do? It read bytes from stdin and passes them to the remote Gold Mine host. The application works similarly to the old-school telnet application, but it lets you read bytes from standard input and wait for response.
+## Installation
 
-### Usage
+1. **Clone the Repository**:
+   ```bash
+   git clone <repository-url>
+   cd goldmine-connect
+   ```
 
+2. **Build the Project**:
+   Make sure you have [Go installed](https://golang.org/doc/install), then run:
+   ```bash
+   go build -o goldmine-connect
+   ```
+
+3. **Run the Executable**:
+   After building, you can run the executable:
+   ```bash
+   ./goldmine-connect -host <host> -port <port> -name <username> -tag <BBS tag>
+   ```
+
+## Usage
+
+The `goldmine-connect` command requires several arguments to function properly. Some arguments are required, while others are optional.
+
+### Required Arguments
+
+- `-host` – The GoldMine server’s host address to connect to.
+- `-port` – The GoldMine server’s rlogin port number.
+- `-name` – Your username for connecting to the server.
+- `-tag` – The BBS tag (without brackets).
+
+### Optional Arguments
+
+- `-xtrn` – The optional Gold Mine xtrn code (leave empty if not needed).
+- `-timeout` – Timeout for receiving bytes after EOF occurs (default: `1s`). Accepts durations such as `500ms`, `2s`, etc.
+
+### Example Usage
+
+```bash
+./goldmine-connect -host example.com -port 2513 -name myUsername -tag myBBS
 ```
-$ go-telnet --help
-usage: go-telnet [<flags>] <host> <port> <name> <tag> <xtrn>
 
-Read bytes from stdin and pass them to the remote host.
+In this example:
+- `-host` is set to `example.com`
+- `-port` is set to `2513`
+- `-name` is `myUsername`
+- `-tag` is `myBBS`
 
-Flags:
-  --help            Show help (also see --help-long and --help-man).
-  -t, --timeout=1s  Byte receiving timeout after the input EOF occurs
-  --version         Show application version.
+You may also specify optional parameters, like so:
 
-Args:
-  <host>  GoldMine host adddress
-  <port>  Goldmine rlogin port
-  <name>  Username to connect as
-  <tag>   BBS tag (no brackets)
-  <xtrn>  Gold Mine xtrn code
+```bash
+./goldmine-connect -host example.com -port 2513 -name myUsername -tag myBBS -xtrn WORD -timeout 500ms
 ```
+
+### Error Messages
+
+If required arguments are missing, you’ll see an error message like this:
+
+```plaintext
+Error: Missing required arguments.
+Usage: goldmine-connect -host <host> -port <port> -name <username> -tag <BBS tag> [-xtrn <xtrn code>] [-timeout <timeout>]
+
+Example: goldmine-connect -host example.com -port 2513 -name myUsername -tag myBBS
+
+Required arguments:
+  -host    The GoldMine host address to connect to.
+  -port    The GoldMine rlogin port number.
+  -name    Your username for the connection.
+  -tag     The BBS tag (without brackets).
+
+Optional arguments:
+  -xtrn    Optional Gold Mine xtrn code.
+  -timeout Byte receiving timeout, e.g., 1s, 500ms (default: 1s).
+```
+
+## Contributing
+
+Feel free to open issues and submit pull requests to improve `goldmine-connect`. Please follow [Go’s best practices](https://golang.org/doc/effective_go.html) when submitting code.
+
+## License
+
+This project is licensed under the MIT License.

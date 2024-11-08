@@ -3,14 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"time"
-
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const defaultBufferSize = 4096
@@ -21,35 +20,45 @@ type CommandLine struct {
 	port    uint64
 	name    string
 	tag     string
-	xtrn    *string // Make xtrn a pointer to distinguish if it's provided
+	xtrn    *string
 	timeout time.Duration
 }
 
-// Implementing Options interface methods
-func (c *CommandLine) Host() string           { return c.host }
-func (c *CommandLine) Port() uint64           { return c.port }
-func (c *CommandLine) Timeout() time.Duration { return c.timeout }
-func (c *CommandLine) Name() string           { return c.name }
-func (c *CommandLine) Xtrn() *string          { return c.xtrn } // Return pointer to check for nil
-func (c *CommandLine) Tag() string            { return c.tag }
-
-// Read method returns valid options read from command line args.
+// Read method parses command line args using the flag package.
 func Read() *CommandLine {
-	host := kingpin.Arg("host", "GoldMine host address").Required().String()
-	port := kingpin.Arg("port", "Goldmine rlogin port").Required().Uint64()
-	name := kingpin.Arg("name", "username").Required().String()
-	tag := kingpin.Arg("tag", "BBS tag (no brackets)").Required().String()
-	xtrn := kingpin.Arg("xtrn", "Gold Mine xtrn code").String() // No longer required
-	timeout := kingpin.Flag("timeout", "Byte receiving timeout after the input EOF occurs").Short('t').Default("1s").Duration()
+	host := flag.String("host", "", "GoldMine host address")
+	port := flag.Uint64("port", 0, "Goldmine rlogin port")
+	name := flag.String("name", "", "Username")
+	tag := flag.String("tag", "", "BBS tag (no brackets)")
+	xtrn := flag.String("xtrn", "", "Gold Mine xtrn code (optional)") // Optional flag
+	timeout := flag.Duration("timeout", 1*time.Second, "Byte receiving timeout after the input EOF occurs")
 
-	kingpin.Parse()
+	flag.Parse()
+
+	// Validate required flags
+	if *host == "" || *port == 0 || *name == "" || *tag == "" {
+		log.Fatalf(`Error: Missing required arguments.
+Usage: goldmine-connect -host <host> -port <port> -name <username> -tag <BBS tag> [-xtrn <xtrn code>] [-timeout <timeout>]
+
+Example: goldmine-connect -host example.com -port 2513 -name myUsername -tag myBBS
+
+Required arguments:
+  -host    The GoldMine host address to connect to.
+  -port    The GoldMine rlogin port number.
+  -name    Your username for the connection.
+  -tag     The BBS tag (without brackets).
+
+Optional arguments:
+  -xtrn    Optional Gold Mine xtrn code.
+  -timeout Byte receiving timeout, e.g., 1s, 500ms (default: 1s).`)
+	}
 
 	return &CommandLine{
 		host:    *host,
 		port:    *port,
 		name:    *name,
 		tag:     *tag,
-		xtrn:    xtrn, // Pointer is automatically assigned if not provided
+		xtrn:    xtrn,
 		timeout: *timeout,
 	}
 }
@@ -64,12 +73,21 @@ type Options interface {
 	Tag() string
 }
 
+// Implementing Options interface methods for CommandLine
+func (c *CommandLine) Host() string           { return c.host }
+func (c *CommandLine) Port() uint64           { return c.port }
+func (c *CommandLine) Timeout() time.Duration { return c.timeout }
+func (c *CommandLine) Name() string           { return c.name }
+func (c *CommandLine) Xtrn() *string          { return c.xtrn }
+func (c *CommandLine) Tag() string            { return c.tag }
+
 // TelnetClient represents a TCP client which is responsible for writing input data and printing response.
 type TelnetClient struct {
 	destination     *net.TCPAddr
 	responseTimeout time.Duration
 }
 
+// NewTelnetClient creates a new TelnetClient instance.
 func NewTelnetClient(options Options) (*TelnetClient, error) {
 	tcpAddr := createTCPAddr(options)
 	resolved, err := resolveTCPAddr(tcpAddr)
@@ -83,6 +101,7 @@ func NewTelnetClient(options Options) (*TelnetClient, error) {
 	}, nil
 }
 
+// ProcessData method establishes a connection to the server and processes input/output data.
 func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, options Options) {
 	connection, err := net.DialTCP("tcp", nil, t.destination)
 	if err != nil {
@@ -113,11 +132,12 @@ func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, op
 	requestDataChannel := make(chan []byte)
 	doneChannel := make(chan bool)
 	responseDataChannel := make(chan []byte)
-	serverDisconnected := make(chan bool) // Channel to signal server disconnection
+	closeSignal := make(chan bool) // Channel to signal server disconnection
+	closing := false               // Flag to indicate if we're closing
 
 	// Start data handling goroutines
 	go t.readInputData(inputData, requestDataChannel, doneChannel)
-	go t.readServerData(connection, responseDataChannel, serverDisconnected)
+	go t.readServerData(connection, responseDataChannel, closeSignal)
 
 	afterEOFResponseTicker := time.NewTicker(t.responseTimeout)
 	defer afterEOFResponseTicker.Stop()
@@ -128,13 +148,22 @@ func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, op
 	for {
 		select {
 		case request := <-requestDataChannel:
+			if closing {
+				log.Println("Connection closing; stopping writes.")
+				return
+			}
 			if _, err := connection.Write(request); err != nil {
 				log.Printf("Error occurred while writing to TCP socket: %v\n", err)
 				return
 			}
 		case <-doneChannel:
 			afterEOFMode = true
+			closing = true // Set closing flag
 		case response := <-responseDataChannel:
+			if closing {
+				log.Println("Connection closing; stopping reads.")
+				return
+			}
 			outputData.Write(response)
 			somethingRead = true
 			if afterEOFMode {
@@ -146,36 +175,15 @@ func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, op
 				log.Println("Connection timeout with no response received.")
 				return
 			}
-		case <-serverDisconnected:
-			log.Println("Server disconnected.")
+		case <-closeSignal:
+			log.Println("Server disconnected. Exiting.")
 			return
 		}
 	}
 }
 
-// Modified readServerData to detect server disconnection and send signal
-func (t *TelnetClient) readServerData(connection *net.TCPConn, received chan<- []byte, serverDisconnected chan<- bool) {
-	defer close(received)           // Ensure received channel is closed
-	defer close(serverDisconnected) // Close serverDisconnected when done
-
-	buffer := make([]byte, defaultBufferSize)
-	for {
-		n, err := connection.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				log.Println("Server closed the connection.")
-				serverDisconnected <- true // Signal server disconnection
-				return
-			}
-			log.Printf("Error occurred while reading from server: %v\n", err)
-			serverDisconnected <- true // Signal server disconnection on error
-			return
-		}
-		received <- buffer[:n]
-	}
-}
-
-func (t *TelnetClient) readInputData(inputData io.Reader, toSent chan<- []byte, doneChannel chan<- bool) {
+// Method to read input data and send it to the requestDataChannel
+func (t *TelnetClient) readInputData(inputData io.Reader, toSend chan<- []byte, doneChannel chan<- bool) {
 	buffer := make([]byte, defaultBufferSize)
 	reader := bufio.NewReader(inputData)
 
@@ -188,7 +196,28 @@ func (t *TelnetClient) readInputData(inputData io.Reader, toSent chan<- []byte, 
 			}
 			log.Fatalf("Error reading input data: %v", err)
 		}
-		toSent <- buffer[:n]
+		toSend <- buffer[:n]
+	}
+}
+
+// Method to read server data and send it to the responseDataChannel, or signal disconnection if needed
+func (t *TelnetClient) readServerData(connection *net.TCPConn, received chan<- []byte, closeSignal chan<- bool) {
+	buffer := make([]byte, defaultBufferSize)
+	for {
+		n, err := connection.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				log.Println("Server closed the connection.")
+				closeSignal <- true // Notify that the server disconnected
+				close(received)     // Close the received channel
+				return
+			}
+			log.Printf("Error occurred while reading from server: %v\n", err)
+			closeSignal <- true // Notify that an error occurred
+			close(received)
+			return
+		}
+		received <- buffer[:n]
 	}
 }
 
@@ -201,6 +230,7 @@ func createTCPAddr(options Options) string {
 	return buffer.String()
 }
 
+// resolveTCPAddr resolves a TCP address string.
 func resolveTCPAddr(addr string) (*net.TCPAddr, error) {
 	resolved, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -209,6 +239,7 @@ func resolveTCPAddr(addr string) (*net.TCPAddr, error) {
 	return resolved, nil
 }
 
+// Main function
 func main() {
 	commandLine := Read()
 
