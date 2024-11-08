@@ -41,19 +41,14 @@ The `goldmine-connect` command requires several arguments to function properly. 
 ### Example Usage
 
 ```bash
-./goldmine-connect -host example.com -port 2513 -name myUsername -tag myBBS
+./goldmine-connect -host goldminedoors.com -port 2513 -name testUser -tag XYZ
 ```
 
-In this example:
-- `-host` is set to `example.com`
-- `-port` is set to `2513`
-- `-name` is `myUsername`
-- `-tag` is `myBBS`
 
 You may also specify optional parameters, like so:
 
 ```bash
-./goldmine-connect -host example.com -port 2513 -name myUsername -tag myBBS -xtrn WORD -timeout 500ms
+./goldmine-connect -host goldminedoors.com -port 2513 -name testUser -tag XYZ -xtrn MRC -timeout 500ms
 ```
 
 ### Error Messages
@@ -73,7 +68,7 @@ Required arguments:
   -tag     The BBS tag (without brackets).
 
 Optional arguments:
-  -xtrn    Optional Gold Mine xtrn code.
+  -xtrn    Optional Gold Mine xtrn code from goldminebbs.com.
   -timeout Byte receiving timeout, e.g., 1s, 500ms (default: 1s).
 ```
 
