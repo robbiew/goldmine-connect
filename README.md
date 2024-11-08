@@ -28,9 +28,9 @@ The `goldmine-connect` command requires several arguments to function properly. 
 
 ### Required Arguments
 
-- `-host` – Gold Mine server’s host address to connect to.
-- `-port` – GoldM ine server’s rlogin port number.
-- `-name` – Your username for connecting to the server.
+- `-host` – Gold Mine server’s host address to connect to (set it to goldminedoors.com)
+- `-port` – Gold Mine server’s rlogin port number (set it to 2513)
+- `-name` – The BBS username for connecting to the server.
 - `-tag` – The BBS tag (without brackets).
 
 ### Optional Arguments
