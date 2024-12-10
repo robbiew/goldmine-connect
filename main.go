@@ -205,23 +205,24 @@ func (t *TelnetClient) readInputData(inputData io.Reader, toSend chan<- []byte, 
 	}
 }
 
-// Method to read server data and send it to the responseDataChannel, or signal disconnection if needed
 func (t *TelnetClient) readServerData(connection *net.TCPConn, received chan<- []byte, closeSignal chan<- bool) {
 	buffer := make([]byte, defaultBufferSize)
+
 	for {
 		n, err := connection.Read(buffer)
 		if err != nil {
 			if err == io.EOF {
 				log.Println("Server closed the connection.")
-				closeSignal <- true // Notify that the server disconnected
-				close(received)     // Close the received channel
+				closeSignal <- true
+				close(received)
 				return
 			}
 			log.Printf("Error occurred while reading from server: %v\n", err)
-			closeSignal <- true // Notify that an error occurred
+			closeSignal <- true
 			close(received)
 			return
 		}
+		// Send raw bytes as-is
 		received <- buffer[:n]
 	}
 }
