@@ -187,7 +187,6 @@ func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, op
 	}
 }
 
-// Method to read input data and send it to the requestDataChannel
 func (t *TelnetClient) readInputData(inputData io.Reader, toSend chan<- []byte, doneChannel chan<- bool) {
 	buffer := make([]byte, defaultBufferSize)
 	reader := bufio.NewReader(inputData)
@@ -201,6 +200,7 @@ func (t *TelnetClient) readInputData(inputData io.Reader, toSend chan<- []byte, 
 			}
 			log.Fatalf("Error reading input data: %v", err)
 		}
+		// Send raw data
 		toSend <- buffer[:n]
 	}
 }
