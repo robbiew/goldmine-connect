@@ -113,17 +113,22 @@ func (t *TelnetClient) ProcessData(inputData io.Reader, outputData io.Writer, op
 		log.Println("Connection closed.")
 	}()
 
-	// Send initial rlogin handshake using the parameters from CommandLine
+	// Conditionally include xtrn if it's provided
 	localUsername := ""              // Placeholder: replace with actual local username if needed
 	remoteUsername := options.Name() // Use the name from CommandLine struct
 	tag := options.Tag()             // BBS tag from CommandLine struct
 
-	// Conditionally include xtrn if it's provided
 	handshake := fmt.Sprintf("\x00%s\x00[%s]%s\x00", localUsername, tag, remoteUsername)
+
+	// Check if xtrn (termtype) is provided
 	if options.Xtrn() != nil && *options.Xtrn() != "" {
 		handshake += "xtrn=" + *options.Xtrn() + "\x00"
+	} else {
+		// Send an empty string followed by a null character for termtype if not provided
+		handshake += "\x00"
 	}
 
+	// Write handshake to the connection
 	if _, err := connection.Write([]byte(handshake)); err != nil {
 		log.Fatalf("Failed to send rlogin handshake: %v", err)
 		return
