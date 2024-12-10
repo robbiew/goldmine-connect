@@ -31,7 +31,10 @@ _testmain.go
 # Binary
 #
 bin/
+/bin
 
 # Local temporary directory
 #
 tmp/
+
+
