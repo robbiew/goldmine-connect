@@ -14,7 +14,8 @@ import (
 	"golang.org/x/term"
 )
 
-const defaultBufferSize = 8192
+const defaultBufferSize = 4096
+const sleepBufferFullMilli = 250
 
 // CommandLine struct stores command-line arguments.
 type CommandLine struct {
@@ -252,6 +253,10 @@ func (t *TelnetClient) readServerData(connection *net.TCPConn, received chan<- [
 		}
 		// Send raw bytes as-is
 		received <- buffer[:n]
+
+		if n == defaultBufferSize {
+			time.Sleep(sleepBufferFullMilli * time.Millisecond)
+		}
 	}
 }
 
